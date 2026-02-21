@@ -1,0 +1,9 @@
+{
+  "pollIntervalMs": 5000,
+  "defaultMaxAttempts": 2,
+  "routingOrder": [
+    "claude-generalist"
+  ],
+  "cleanupWorktreeOnSuccess": false,
+  "cleanupWorktreeOnFailure": false
+}

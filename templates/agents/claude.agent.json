@@ -1,0 +1,13 @@
+{
+  "name": "claude-generalist",
+  "enabled": true,
+  "description": "Default Claude Code worker for delegated tasks.",
+  "command": "claude",
+  "promptMode": "argument",
+  "defaultArgs": [
+    "--permission-mode",
+    "acceptEdits",
+    "-p"
+  ],
+  "useWorktree": true
+}

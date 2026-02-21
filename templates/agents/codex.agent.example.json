@@ -1,0 +1,9 @@
+{
+  "name": "codex-generalist",
+  "enabled": false,
+  "description": "Example config. Copy and tune for your Codex CLI command line.",
+  "command": "codex",
+  "promptMode": "argument",
+  "defaultArgs": [],
+  "useWorktree": true
+}

@@ -1,0 +1,37 @@
+{
+  "name": "autonomous-delegation-daemon",
+  "version": "0.1.0",
+  "description": "Repository-agnostic autonomous task delegation daemon for AI CLIs",
+  "type": "module",
+  "private": false,
+  "bin": {
+    "autodelegate-daemon": "bin/autodelegate-daemon.mjs",
+    "autodelegate-submit": "bin/autodelegate-submit.mjs",
+    "autodelegate-status": "bin/autodelegate-status.mjs",
+    "autodelegate-init": "bin/autodelegate-init.mjs"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE",
+    "templates"
+  ],
+  "scripts": {
+    "lint": "node --check bin/autodelegate-daemon.mjs && node --check bin/autodelegate-init.mjs && node --check bin/autodelegate-submit.mjs && node --check bin/autodelegate-status.mjs",
+    "test": "node bin/autodelegate-daemon.mjs --help && node bin/autodelegate-init.mjs --help && node bin/autodelegate-submit.mjs --help && node bin/autodelegate-status.mjs --help",
+    "build": "echo 'No build step required'"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "automation",
+    "agent",
+    "ai",
+    "cli",
+    "delegation",
+    "workflow"
+  ],
+  "author": "Bakary Potter",
+  "license": "MIT"
+}

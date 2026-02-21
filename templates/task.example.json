@@ -1,0 +1,15 @@
+{
+  "id": "oauth-hardening-001",
+  "title": "Implement OAuth token refresh",
+  "prompt": "Implement OAuth token refresh logic and tests.",
+  "agent": "claude-generalist",
+  "cwd": ".",
+  "maxAttempts": 2,
+  "commandArgs": [
+    "--model",
+    "sonnet"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
