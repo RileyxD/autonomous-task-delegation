@@ -1,12 +1,14 @@
 {
-  "name": "claude-generalist",
-  "enabled": false,
-  "description": "Fallback Claude worker with no fixed subagent.",
+  "name": "claude-bash",
+  "enabled": true,
+  "description": "Claude Bash subagent for terminal and git-heavy execution.",
   "command": "claude",
   "promptMode": "argument",
   "defaultArgs": [
     "--model",
     "qwen3-coder-capped",
+    "--agent",
+    "Bash",
     "--permission-mode",
     "bypassPermissions",
     "-p"

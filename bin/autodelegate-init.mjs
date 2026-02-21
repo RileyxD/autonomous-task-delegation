@@ -11,8 +11,8 @@ function usage() {
 
 Creates reusable autonomous delegation scaffold:
 - orchestrator.config.json
-- agents/*.agent.json
 - inbox/processing/completed/failed directories
+- local agents override directory (optional)
 `);
 }
 
@@ -78,7 +78,7 @@ const dirs = ['inbox', 'processing', 'completed', 'failed', 'runs', 'worktrees',
 for (const dirName of dirs) {
   const full = path.join(homeDir, dirName);
   fs.mkdirSync(full, { recursive: true });
-  if (['inbox', 'processing', 'completed', 'failed'].includes(dirName)) {
+  if (['inbox', 'processing', 'completed', 'failed', 'agents'].includes(dirName)) {
     writeFileIfMissing(path.join(full, '.gitkeep'), '', force);
   }
 }
@@ -89,7 +89,14 @@ writeFileIfMissing(
     {
       pollIntervalMs: 5000,
       defaultMaxAttempts: 2,
-      routingOrder: ['claude-generalist'],
+      routingOrder: [
+        'claude-general-purpose',
+        'claude-explore',
+        'claude-plan',
+        'claude-bash',
+        'claude-code-guide',
+        'claude-generalist',
+      ],
       cleanupWorktreeOnSuccess: false,
       cleanupWorktreeOnFailure: false,
     },
@@ -100,40 +107,20 @@ writeFileIfMissing(
 );
 
 writeFileIfMissing(
-  path.join(homeDir, 'agents', 'claude.agent.json'),
-  `${JSON.stringify(
-    {
-      name: 'claude-generalist',
-      enabled: true,
-      description: 'Default Claude Code worker for delegated tasks.',
-      command: 'claude',
-      promptMode: 'argument',
-      defaultArgs: ['--permission-mode', 'acceptEdits', '-p'],
-      useWorktree: true,
-    },
-    null,
-    2,
-  )}\n`,
-  force,
-);
+  path.join(homeDir, 'agents', 'README.md'),
+  `# Local Agent Overrides
 
-writeFileIfMissing(
-  path.join(homeDir, 'agents', 'codex.agent.example.json'),
-  `${JSON.stringify(
-    {
-      name: 'codex-generalist',
-      enabled: false,
-      description: 'Example config. Copy to codex.agent.json and tune args.',
-      command: 'codex',
-      promptMode: 'argument',
-      defaultArgs: [],
-      useWorktree: true,
-    },
-    null,
-    2,
-  )}\n`,
+This folder is optional.
+
+Autodelegate automatically loads shared agent templates from:
+- $CODEX_HOME/tools/autonomous-delegation/templates/agents
+- or $HOME/.codex/tools/autonomous-delegation/templates/agents
+
+Any \`.agent.json\` file here overrides shared agent definitions with the same \`name\`.
+`,
   force,
 );
 
 console.log(`Initialized autodelegate home: ${homeDir}`);
-console.log('Next: add/update agent configs, then run autodelegate-daemon.');
+console.log('Shared agents are loaded from Codex templates by default.');
+console.log('Use local agents/ only for project-specific overrides, then run autodelegate-daemon.');

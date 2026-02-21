@@ -11,6 +11,8 @@ function usage() {
 
 Env:
   AUTO_DELEGATE_HOME      Home directory path override
+  AUTO_DELEGATE_GLOBAL_AGENTS_DIR Global shared agents directory override
+  AUTO_DELEGATE_DISABLE_GLOBAL_AGENTS Set to "1" to disable shared agents
 `);
 }
 
@@ -33,6 +35,19 @@ function resolveHome(repoRoot, cliHome) {
   return path.resolve(repoRoot, raw);
 }
 
+function resolveCodexHome() {
+  return process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
+}
+
+function resolveGlobalAgentsDir() {
+  const override = process.env.AUTO_DELEGATE_GLOBAL_AGENTS_DIR;
+  if (override && override.length > 0) {
+    return path.isAbsolute(override) ? override : path.resolve(process.cwd(), override);
+  }
+
+  return path.join(resolveCodexHome(), 'tools', 'autonomous-delegation', 'templates', 'agents');
+}
+
 function countJson(dirPath) {
   if (!fs.existsSync(dirPath)) {
     return 0;
@@ -43,6 +58,39 @@ function countJson(dirPath) {
 function commandExists(command) {
   const result = spawnSync('which', [command], { stdio: 'ignore' });
   return result.status === 0;
+}
+
+function loadAgentsFromDirs(agentDirs) {
+  const byName = new Map();
+
+  for (const agentsDir of agentDirs) {
+    if (!agentsDir || !fs.existsSync(agentsDir)) {
+      continue;
+    }
+
+    const files = fs.readdirSync(agentsDir).filter((name) => name.endsWith('.agent.json')).sort();
+    for (const fileName of files) {
+      const fullPath = path.join(agentsDir, fileName);
+      try {
+        const agent = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+        const enabled = agent.enabled !== false;
+        if (!enabled || !agent.name) {
+          continue;
+        }
+
+        byName.set(agent.name, {
+          name: agent.name,
+          command: agent.command || 'n/a',
+          installed: commandExists(String(agent.command || '')),
+          source: fullPath,
+        });
+      } catch {
+        // ignore invalid files in status summary
+      }
+    }
+  }
+
+  return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 let homeArg = '';
@@ -75,6 +123,7 @@ const processingDir = path.join(homeDir, 'processing');
 const completedDir = path.join(homeDir, 'completed');
 const failedDir = path.join(homeDir, 'failed');
 const agentsDir = path.join(homeDir, 'agents');
+const globalAgentsDir = resolveGlobalAgentsDir();
 
 console.log('Autodelegate status');
 console.log(`Repo: ${repoRoot}`);
@@ -83,27 +132,19 @@ console.log(`Inbox: ${countJson(inboxDir)}`);
 console.log(`Processing: ${countJson(processingDir)}`);
 console.log(`Completed: ${countJson(completedDir)}`);
 console.log(`Failed: ${countJson(failedDir)}`);
-
-if (!fs.existsSync(agentsDir)) {
-  process.exit(0);
+if (process.env.AUTO_DELEGATE_DISABLE_GLOBAL_AGENTS !== '1') {
+  console.log(`Global agents dir: ${globalAgentsDir}`);
 }
+console.log(`Local override agents dir: ${agentsDir}`);
 
-const agentFiles = fs.readdirSync(agentsDir).filter((name) => name.endsWith('.agent.json')).sort();
-if (!agentFiles.length) {
+const sources =
+  process.env.AUTO_DELEGATE_DISABLE_GLOBAL_AGENTS === '1' ? [agentsDir] : [globalAgentsDir, agentsDir];
+const agents = loadAgentsFromDirs(sources);
+if (!agents.length) {
   process.exit(0);
 }
 
 console.log('Agents:');
-for (const fileName of agentFiles) {
-  const fullPath = path.join(agentsDir, fileName);
-  try {
-    const agent = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-    const enabled = agent.enabled !== false;
-    const installed = commandExists(String(agent.command || ''));
-    console.log(
-      `- ${agent.name || fileName}: enabled=${enabled} command=${agent.command || 'n/a'} installed=${installed}`,
-    );
-  } catch {
-    console.log(`- ${fileName}: invalid JSON`);
-  }
+for (const agent of agents) {
+  console.log(`- ${agent.name}: command=${agent.command} installed=${agent.installed} source=${agent.source}`);
 }

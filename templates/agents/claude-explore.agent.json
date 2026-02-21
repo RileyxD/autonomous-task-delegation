@@ -1,12 +1,14 @@
 {
-  "name": "claude-generalist",
-  "enabled": false,
-  "description": "Fallback Claude worker with no fixed subagent.",
+  "name": "claude-explore",
+  "enabled": true,
+  "description": "Claude Explore subagent for codebase discovery and search.",
   "command": "claude",
   "promptMode": "argument",
   "defaultArgs": [
     "--model",
     "qwen3-coder-capped",
+    "--agent",
+    "Explore",
     "--permission-mode",
     "bypassPermissions",
     "-p"

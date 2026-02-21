@@ -26,6 +26,8 @@ Options:
 Env:
   AUTO_DELEGATE_HOME              Home directory path override
   AUTO_DELEGATE_BRANCH_PREFIX     Worktree branch prefix (default: autodelegate/)
+  AUTO_DELEGATE_GLOBAL_AGENTS_DIR Global shared agents directory override
+  AUTO_DELEGATE_DISABLE_GLOBAL_AGENTS Set to "1" to disable shared agents
 `);
 }
 
@@ -143,6 +145,19 @@ function resolveHome(repoRoot, cliHome) {
   return path.resolve(repoRoot, raw);
 }
 
+function resolveCodexHome() {
+  return process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
+}
+
+function resolveGlobalAgentsDir() {
+  const override = process.env.AUTO_DELEGATE_GLOBAL_AGENTS_DIR;
+  if (override && override.length > 0) {
+    return path.isAbsolute(override) ? override : path.resolve(process.cwd(), override);
+  }
+
+  return path.join(resolveCodexHome(), 'tools', 'autonomous-delegation', 'templates', 'agents');
+}
+
 function branchPrefix() {
   const raw = process.env.AUTO_DELEGATE_BRANCH_PREFIX || 'autodelegate/';
   return raw.endsWith('/') ? raw : `${raw}/`;
@@ -174,36 +189,43 @@ function loadConfig(configPath) {
   }
 }
 
-function loadAgents(agentsDir) {
-  const files = listFiles(agentsDir, '.agent.json');
-  const agents = [];
+function loadAgents(agentsDirs) {
+  const byName = new Map();
 
-  for (const fileName of files) {
-    const fullPath = path.join(agentsDir, fileName);
-    try {
-      const agent = readJson(fullPath);
-      if (agent.enabled === false) {
-        continue;
+  for (const agentsDir of agentsDirs) {
+    if (!agentsDir || !fs.existsSync(agentsDir)) {
+      continue;
+    }
+
+    const files = listFiles(agentsDir, '.agent.json');
+    for (const fileName of files) {
+      const fullPath = path.join(agentsDir, fileName);
+      try {
+        const agent = readJson(fullPath);
+        if (agent.enabled === false) {
+          continue;
+        }
+        if (!agent.name || !agent.command) {
+          log(`Skipping invalid agent config: ${fullPath}`);
+          continue;
+        }
+        if (!commandExists(agent.command)) {
+          continue;
+        }
+
+        byName.set(agent.name, {
+          ...agent,
+          promptMode: agent.promptMode === 'stdin' ? 'stdin' : 'argument',
+          defaultArgs: Array.isArray(agent.defaultArgs) ? agent.defaultArgs.map(String) : [],
+          useWorktree: agent.useWorktree !== false,
+        });
+      } catch (error) {
+        log(`Failed to load agent config: ${fullPath}`, String(error));
       }
-      if (!agent.name || !agent.command) {
-        log(`Skipping invalid agent config: ${fullPath}`);
-        continue;
-      }
-      if (!commandExists(agent.command)) {
-        continue;
-      }
-      agents.push({
-        ...agent,
-        promptMode: agent.promptMode === 'stdin' ? 'stdin' : 'argument',
-        defaultArgs: Array.isArray(agent.defaultArgs) ? agent.defaultArgs.map(String) : [],
-        useWorktree: agent.useWorktree !== false,
-      });
-    } catch (error) {
-      log(`Failed to load agent config: ${fullPath}`, String(error));
     }
   }
 
-  return agents;
+  return Array.from(byName.values());
 }
 
 function pickAgent(task, agents, config) {
@@ -496,6 +518,8 @@ async function main() {
     agents: path.join(homeDir, 'agents'),
   };
 
+  const globalAgentsDir = resolveGlobalAgentsDir();
+
   Object.values(dirs).forEach(ensureDir);
 
   const configPath = path.join(homeDir, 'orchestrator.config.json');
@@ -513,11 +537,15 @@ async function main() {
   log('Autodelegate daemon started.');
   log(`Repo root: ${repoRoot}`);
   log(`Home: ${homeDir}`);
+  if (process.env.AUTO_DELEGATE_DISABLE_GLOBAL_AGENTS !== '1') {
+    log(`Global agents: ${globalAgentsDir}`);
+  }
 
   while (!shouldStop) {
     const config = loadConfig(configPath);
     const effectivePoll = options.pollMs || Number(config.pollIntervalMs) || 5000;
-    const agents = loadAgents(dirs.agents);
+    const agentSources = process.env.AUTO_DELEGATE_DISABLE_GLOBAL_AGENTS === '1' ? [dirs.agents] : [globalAgentsDir, dirs.agents];
+    const agents = loadAgents(agentSources);
 
     const processed = await processOneTask({
       config,

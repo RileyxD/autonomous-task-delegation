@@ -41,7 +41,13 @@ Override with:
 - `AUTO_DELEGATE_HOME`
 
 ## Agent configuration
-Agent files live in `<home>/agents/*.agent.json`.
+Shared agent templates are auto-loaded from:
+- `$CODEX_HOME/tools/autonomous-delegation/templates/agents`
+- fallback: `$HOME/.codex/tools/autonomous-delegation/templates/agents`
+
+Project-local override files can be added in `<home>/agents/*.agent.json`.
+If a local file has the same `name` as a shared one, local overrides shared.
+This is the recommended place to change model or permission flags per project.
 
 Minimum fields:
 - `name`
@@ -57,6 +63,11 @@ Common optional fields:
 Template files:
 - `templates/agents/claude.agent.json`
 - `templates/agents/codex.agent.example.json`
+- `templates/agents/claude-general-purpose.agent.json`
+- `templates/agents/claude-explore.agent.json`
+- `templates/agents/claude-plan.agent.json`
+- `templates/agents/claude-bash.agent.json`
+- `templates/agents/claude-code-guide.agent.json`
 
 ## Task configuration
 Task files are JSON in `<home>/inbox`.
@@ -74,6 +85,22 @@ Priority order:
 2. task `tool`
 3. `routingOrder` in `<home>/orchestrator.config.json`
 4. first installed enabled agent
+
+You can disable shared agents with:
+- `AUTO_DELEGATE_DISABLE_GLOBAL_AGENTS=1`
+
+## Claude subagents
+If your Claude Code environment supports subagents, you can route tasks by setting task `agent` to:
+- `claude-general-purpose`
+- `claude-explore`
+- `claude-plan`
+- `claude-bash`
+- `claude-code-guide`
+
+Example:
+```bash
+autodelegate-submit --title "Find publish route usages" --prompt "Find all usages of publish/project and summarize." --agent claude-explore
+```
 
 ## Outputs
 - Queue directories: `inbox`, `processing`, `completed`, `failed`

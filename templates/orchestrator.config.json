@@ -2,6 +2,11 @@
   "pollIntervalMs": 5000,
   "defaultMaxAttempts": 2,
   "routingOrder": [
+    "claude-general-purpose",
+    "claude-explore",
+    "claude-plan",
+    "claude-bash",
+    "claude-code-guide",
     "claude-generalist"
   ],
   "cleanupWorktreeOnSuccess": false,
